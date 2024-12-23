@@ -118,7 +118,7 @@ display:
           it.print(5, 3, id(font1), blue, TextAlign::TOP_LEFT, id(message_text).state.c_str());
         }
 
-      // LOCAL BUSY SECTION
+    // LOCAL BUSY SECTION
       // check if local mobile phone on call
       if (id(local_call_sensor).state == "offhook") {
         it.printf(local_x, local_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰏶");
@@ -138,19 +138,17 @@ display:
                 //if not busy, check for work status
                 if (id(local_work_status).state) {
                   //if work status yes, print working color (orange)
-                  //it.filled_circle(local_x, local_y, 20, orange);
                   it.printf(local_x, local_y, id(font_mdi), orange, TextAlign::CENTER_LEFT, "󰪥");
                 }
                   else {
                     //if not, print available color (green)
-                    //it.filled_circle(local_x, local_y, 20, green);
                     it.printf(local_x, local_y, id(font_mdi), green, TextAlign::CENTER_LEFT, "󰪥");
                   }
               }
           }
       }
 
-      // REMOTE BUSY SECTION
+    // REMOTE BUSY SECTION
       // check if remote mobile phone on call
       if (id(remote_call_sensor).state == "offhook") {
         it.printf(remote_x, remote_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰏶");

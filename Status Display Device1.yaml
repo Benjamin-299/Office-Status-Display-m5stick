@@ -1,0 +1,45 @@
+# Main Setup Information - Replace name & friendly name as needed
+esphome:
+  name: status-tracker-device
+  friendly_name: Status Tracker Device 1
+
+# Substitutions
+substitutions:
+  device_name: "Status Tracker Device 1"
+
+ 
+  #Local User Info (Person who's office the device IS in)
+  busy_flag_local: switch.person1_busy  #Local busy flag 
+  local_user: Person1Name  #Name of local user -
+  local_abvr: '"P1:"' #Short for local user 
+  text_sensor: input_text.TextHelper1 #notification text to show
+  local_phone_name: Person1Phone #phone deivce name to use
+
+  #Remote User Info (Person who's office the device is NOT in)
+  busy_flag: switch.person2_busy #remote busy flag
+  remote_user: Person2Name #Name of remote user 
+  remote_abvr: '"P2:"' #Short for remote user
+  remote_phone_name: Person2Phone #phone name to use
+  
+  #screen rotation
+  rotation: "270" #For horisontal mount, main button left of screen.
+
+# Enable logging
+logger:
+  level: info
+# Enable Home Assistant API
+api:
+  encryption:
+    key: #keyGoesHere
+ota:
+  - platform: esphome
+    id: ota_update
+    password: #passwordGoesHere
+
+###End Main Setup
+packages:
+  esp_defaults: !include shared-files/.esp_defaults.yaml
+  device_base: !include shared-files/hardware/.m5stickC_base.yaml
+  device_1: !include .m5Remote_sensors_scripts.yaml
+  device_2: !include .m5Remote_display.yaml
+  device_3: !include .m5Remote_timeout.yaml
