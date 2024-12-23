@@ -1,0 +1,125 @@
+esphome:
+  on_boot:
+
+number:
+# Screen timeout value - Shown in UI
+  - platform: template
+    name: "Screen Timeout"
+    id: screen_timeout
+    min_value: 5
+    max_value: 60
+    step: 5
+    restore_value: false
+    optimistic: true
+    initial_value: 30 # Default timeout value in minutes
+# Message timeout value - Shown in UI
+  - platform: template
+    name: "Message Timeout"
+    id: message_timeout
+    min_value: 5
+    max_value: 30
+    step: 5
+    restore_value: false
+    optimistic: true
+    initial_value: 15 # Default timeout value in minutes
+
+sensor:
+  # Sensor to store the last interaction timestamp
+  - platform: template
+    name: "Last Interaction"
+    id: last_interaction
+    update_interval: never
+
+  # Sensor to store the last message timestamp
+  - platform: template
+    name: "Last Message"
+    id: last_message
+    update_interval: never
+
+script:
+  # Script to update the last interaction timestamp
+  - id: update_last_interaction
+    then:
+      - switch.turn_on: screen_power
+      - sensor.template.publish:
+          id: last_interaction
+          state: !lambda "return std::time(nullptr);"
+      - lambda: |-
+          ESP_LOGD("SCRIPT_Update_Interaction", "last_interaction_raw: %ld", (long)id(last_interaction).state);
+
+  # Script to update the last message timestamp
+  - id: update_last_message
+    then:
+      - switch.turn_on: screen_power
+      - sensor.template.publish:
+          id: last_message
+          state: !lambda "return std::time(nullptr);"
+      # - lambda: |-
+      #   ESP_LOGD("SCRIPT_Update_Message", "last_message_raw: %ld", (long)id(last_message).state);
+  
+
+#Check on schedule if screen or message display should be turned off. 
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          //Get, and log Current Time: 
+          time_t current_time = std::time(nullptr);
+          ESP_LOGD("INTERVAL", "Current Time (raw): %ld", (long)current_time);
+          char current_time_str[20];
+          strftime(current_time_str, sizeof(current_time_str), "%Y-%m-%d %H:%M:%S", localtime(&current_time));
+          ESP_LOGD("INTERVAL", "Current Time (formatted): %s", current_time_str);
+          
+          //if either person working, or busy turn on screen:
+          if(id(local_work_status).state || id(remote_work_status).state || id(busy_flag).state || id(busy_flag_local).state){
+            //log message if local or remote working:
+            id(screen_power).publish_state(true);
+            //Check if busy, or working, then log:
+            if(id(busy_flag).state || id(busy_flag_local).state){
+              ESP_LOGD("INTERVAL", "Busy Status Active - Leaving Screen On");
+            } else {
+                if(id(local_work_status).state || id(remote_work_status).state) { 
+                  ESP_LOGD("INTERVAL", "Work Time Active - Leaving Screen On");
+                }
+              }
+          }
+          //When neither user working, or busy, run timeout for screen:
+          else {
+          // last_interaction section
+              ESP_LOGD("INTERVAL", "last_interaction_raw: %ld", (long)id(last_interaction).state);
+              time_t last_interaction_timestamp = (time_t)id(last_interaction).state;
+              ESP_LOGD("INTERVAL", "Initialized last_interaction_timestamp: %ld", (long)last_interaction_timestamp);
+              int screen_timeout_duration = (int)(id(screen_timeout).state * 60);
+              ESP_LOGD("INTERVAL", "Screen Timeout Duration (s): %d", screen_timeout_duration);
+              time_t screen_off_time = (last_interaction_timestamp + screen_timeout_duration);
+              ESP_LOGD("INTERVAL", "Turn Screen Off After (raw): %ld", (long)screen_off_time);
+              char screen_off_time_str[20];
+              strftime(screen_off_time_str, sizeof(screen_off_time_str), "%Y-%m-%d %H:%M:%S", localtime(&screen_off_time));
+              ESP_LOGD("INTERVAL", "Turn Screen Off After (formatted): %s", screen_off_time_str);
+              if (current_time > screen_off_time) {
+                id(screen_power).publish_state(false);
+                ESP_LOGD("INTERVAL", "Screen Timeout - Turn Off");
+              } else {
+                id(screen_power).publish_state(true);
+                ESP_LOGD("INTERVAL", "NO Timeout - Keep On");
+              }
+          }
+          // last_message section
+          ESP_LOGD("INTERVAL", "last_message_raw: %ld", (long)id(last_message).state);
+          time_t last_message_timestamp = (time_t)id(last_message).state;
+          ESP_LOGD("INTERVAL", "Initialized last_message_timestamp: %ld", (long)last_message_timestamp);
+          int message_timeout_duration = (int)(id(message_timeout).state * 60);
+          ESP_LOGD("INTERVAL", "Message Timeout Duration (s): %d", message_timeout_duration);
+          time_t message_off_time = (last_message_timestamp + message_timeout_duration);
+          ESP_LOGD("INTERVAL", "Turn Message Off After (raw): %ld", (long)message_off_time);
+          char message_off_time_str[20];
+          strftime(message_off_time_str, sizeof(message_off_time_str), "%Y-%m-%d %H:%M:%S", localtime(&message_off_time));
+          ESP_LOGD("INTERVAL", "Turn Message Off After (formatted): %s", message_off_time_str);
+          if (current_time > message_off_time) {
+            id(display_message).publish_state(false);
+            ESP_LOGD("INTERVAL", "Message Timeout - Turn Off");
+          } else {
+            id(display_message).publish_state(true);
+            ESP_LOGD("INTERVAL", "NO Timeout - Keep On");
+          }
+

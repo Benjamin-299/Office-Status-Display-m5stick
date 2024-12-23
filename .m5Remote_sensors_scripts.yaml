@@ -1,0 +1,212 @@
+esphome:
+  on_boot:
+
+globals:
+  - id: remote_abvr
+    type: std::string
+    initial_value: ${remote_abvr}
+    restore_value: false
+  - id: local_abvr
+    type: std::string
+    restore_value: false
+    initial_value: ${local_abvr}
+
+
+###Busy Status Sensors. Pulls from Home Assistant
+  #Remote Busy Status
+binary_sensor:
+  - platform: homeassistant
+    id: busy_flag
+    entity_id: ${busy_flag}
+    on_state: 
+      then:
+        - script.execute: update_last_interaction
+        - if:
+            condition:
+              binary_sensor.is_on: busy_flag 
+            then:
+              - script.execute: flash_remote_busy
+            else:
+              - script.execute: flash_free
+  #Local Busy Status
+  - platform: homeassistant
+    id: busy_flag_local
+    entity_id: ${busy_flag_local}
+    on_state:
+      then:
+        - script.execute: update_last_interaction
+        - if:
+            condition:
+              binary_sensor.is_on: busy_flag_local
+            then:
+              - script.execute: flash_local_busy
+            else:
+              - script.execute: flash_free
+    #Local Work Status
+  - platform: homeassistant
+    id: local_work_status
+    entity_id: binary_sensor.work_time_${local_user}
+    #Remore Work Status
+  - platform: homeassistant
+    id: remote_work_status
+    entity_id: binary_sensor.work_time_${remote_user}
+  - platform: homeassistant
+    id: local_music_sensor
+    entity_id: binary_sensor.${local_phone_name}_music_active
+  - platform: homeassistant
+    id: remote_music_sensor
+    entity_id: binary_sensor.${remote_phone_name}_music_active
+  - platform: homeassistant
+    id: exterior_doors
+    name: Door Open Sensor
+    entity_id: binary_sensor.exterior_doors
+    on_press: 
+      then:
+        - script.execute: door_alert
+
+
+
+text_sensor:
+  #Opened Exterior Door for Display
+  - platform: homeassistant
+    id: open_exterior_doors
+    entity_id: sensor.open_exterior_doors
+    on_value:
+      then:
+        - script.execute: update_last_interaction
+  #Display Text - Notification Text
+  - platform: homeassistant
+    id: message_text
+    entity_id: ${text_sensor}
+    internal: True
+    on_value: 
+      then:
+        - script.execute: update_last_interaction
+        - script.execute: update_last_message
+        - script.execute: new_message_alert
+  - platform: homeassistant
+    id: remote_call_sensor
+    name: Remote Call Sensor
+    entity_id: sensor.${remote_phone_name}_phone_state
+    on_value: 
+      then:
+        - script.execute: update_last_interaction
+  - platform: homeassistant
+    id: local_call_sensor
+    name: Local Call Sensor
+    entity_id: sensor.${local_phone_name}_phone_state
+    on_value: 
+      then:
+        - script.execute: update_last_interaction
+
+
+
+script:
+  #Script to flash when a door openes
+  - id: door_alert
+    then:
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 250ms
+      - light.turn_off:
+          id: led_light
+  #Script to flash when remote goes busy
+  - id: flash_remote_busy
+    then:
+      - light.turn_on:
+          id: led_light
+      - delay: 100ms
+      - light.turn_off:
+          id: led_light
+      - delay: 100ms
+      - light.turn_on:
+          id: led_light
+      - delay: 100ms
+      - light.turn_off:
+          id: led_light
+      - delay: 100ms
+      - light.turn_on:
+          id: led_light
+      - delay: 2s
+      - light.turn_off:
+          id: led_light
+  #Script to flash when local goes busy
+  - id: flash_local_busy
+    then:
+      - light.turn_on:
+          id: led_light
+      - delay: 50ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 50ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 500ms
+      - light.turn_off:
+          id: led_light
+  #Script to flash light when either goes free
+  - id: flash_free
+    then:
+      - light.turn_on:
+          id: led_light
+      - delay: 100ms
+      - light.turn_off:
+          id: led_light
+      - delay: 50ms
+      - light.turn_on:
+          id: led_light
+      - delay: 100ms
+      - light.turn_off:
+          id: led_light
+  #Script to flash light for New Messages
+  - id: new_message_alert
+    then: 
+      - lambda: |-
+          ESP_LOGD("SCRIPT_new_message_alert", "Script Triggered");
+      - light.turn_on:
+          id: led_light
+      - delay: 1s
+      - light.turn_off:
+          id: led_light
+      - delay: 500ms
+      - light.turn_on:
+          id: led_light
+      - delay: 2s
+      - light.turn_off:
+          id: led_light

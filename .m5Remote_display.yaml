@@ -1,0 +1,188 @@
+esphome:
+  on_boot:
+    priority: 800
+    then:
+      - switch.turn_on: screen_power
+      - delay: 15s
+      - script.execute: update_last_interaction
+
+
+switch:
+  # Screen power switch
+  - platform: template
+    name: "Screen Power"
+    id: screen_power
+    optimistic: true
+    restore_mode: ALWAYS_ON
+
+  # Display message switch
+  - platform: template
+    name: "Display Message"
+    id: display_message
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+##Display Info Below This Line
+#Font for display lambda functions
+font:
+  - file: 'gfonts://Roboto'
+    id: font1
+    size: 20
+  - file: 'gfonts://Roboto'
+    id: font2
+    size: 26
+  - file: 'gfonts://Roboto'
+    id: font3
+    size: 28
+  - file: 'gfonts://Roboto'
+    id: font4
+    size: 36 
+  - file: "2_font/MaterialDesignIconsDesktop.ttf" 
+    id: font_mdi
+    size: 40
+    glyphs: [
+      "󰋋", # mdi-headphones
+      "󰍶", # mdi-minus-circle
+      "󰓇", # mdi-spotify
+      "󰋌", # mdi-headphones-box
+      "󰪥", # circle
+      "󰏶"  # mdi-phone-in-talk
+
+    ]
+
+display:
+- platform: st7735
+  id: view_port
+  data_rate: 40MHz
+  model: "INITR_MINI160X80"
+  reset_pin: GPIO18
+  cs_pin: GPIO5
+  dc_pin: GPIO23
+  rotation: ${rotation}
+  device_width: 80
+  device_height: 160
+  col_start: 26
+  row_start: 1
+  use_bgr: True
+  invert_colors: True
+  lambda: |-
+    auto black = Color(0, 0, 0);
+    auto red = Color(255, 0, 0);
+    auto green = Color(0, 255, 0);
+    auto blue = Color(0, 0, 255);
+    auto white = Color(255, 255, 255);
+    auto purple = Color(255, 0, 255);
+    auto teal = Color(0, 255, 255);
+    auto orange = Color(255, 165, 0);
+    
+    //location for local/remote indicators
+    int half_x = it.get_width() / 2;
+    int local_x = it.get_width() - 48;
+    int local_x_i = it.get_width() - 48;
+    int local_y = it.get_height() - 22;
+    int remote_x = 23;
+    int remote_x_i = 23;
+    int remote_y = it.get_height() - 22;
+    
+    //Display content on screen only when screen_power is ON.
+
+    if (id(screen_power).state) {
+
+      //print local user initial
+      it.print(local_x_i, local_y, id(font2), blue, TextAlign::CENTER_RIGHT, id(local_abvr).c_str());
+      //print remote user initial
+      it.print(remote_x_i, remote_y, id(font2), blue, TextAlign::CENTER_RIGHT, id(remote_abvr).c_str());
+      
+      //Print Battery % if under 50%{
+      if (id(device_battery).state < 50){
+        it.printf(it.get_width() - 5, 5, id(font1), red, TextAlign::TOP_RIGHT, "%.0f%%", id(device_battery).state);
+        } 
+          else {
+            //Print Battery % if under 75%
+            if (id(device_battery).state < 75){
+              it.printf(it.get_width() - 5, 5, id(font1), blue, TextAlign::TOP_RIGHT, "%.0f%%", id(device_battery).state);
+            }
+              else {
+                //Print Battery % if under 90%
+                if (id(device_battery).state < 90){
+                  it.printf(it.get_width() - 5, 5, id(font1), green, TextAlign::TOP_RIGHT, "%.0f%%", id(device_battery).state);
+                }
+              }
+        } //end battery print
+       // When an Exterior Door is Open, show Message
+      if (id(open_exterior_doors).state != "") {
+         it.print(5, 3, id(font1), red, TextAlign::TOP_LEFT, id(open_exterior_doors).state.c_str());
+        } //else {        //}
+      //Print Notification: Only if display_message is turned on
+      if (id(display_message).state) {
+          it.print(5, 3, id(font1), blue, TextAlign::TOP_LEFT, id(message_text).state.c_str());
+        }
+
+      // LOCAL BUSY SECTION
+      // check if local mobile phone on call
+      if (id(local_call_sensor).state == "offhook") {
+        it.printf(local_x, local_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰏶");
+      } 
+      else {
+        // Check if local busy flag is ON, print busy icon
+        if (id(busy_flag_local).state ) { 
+          //busy icon
+          it.printf(local_x, local_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰍶");
+          } 
+          else {
+            //print headphone icons for music status
+            if (id(local_music_sensor).state) { 
+              it.printf(local_x, local_y, id(font_mdi), green, TextAlign::CENTER_LEFT, "󰋌");
+            }
+              else {
+                //if not busy, check for work status
+                if (id(local_work_status).state) {
+                  //if work status yes, print working color (orange)
+                  //it.filled_circle(local_x, local_y, 20, orange);
+                  it.printf(local_x, local_y, id(font_mdi), orange, TextAlign::CENTER_LEFT, "󰪥");
+                }
+                  else {
+                    //if not, print available color (green)
+                    //it.filled_circle(local_x, local_y, 20, green);
+                    it.printf(local_x, local_y, id(font_mdi), green, TextAlign::CENTER_LEFT, "󰪥");
+                  }
+              }
+          }
+      }
+
+      // REMOTE BUSY SECTION
+      // check if remote mobile phone on call
+      if (id(remote_call_sensor).state == "offhook") {
+        it.printf(remote_x, remote_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰏶");
+      } 
+      else {
+        // Check if remote busy_flag is ON
+        if (id(busy_flag).state || id(remote_call_sensor).state == "offhook" ) { 
+          //it.filled_circle(remote_x, remote_y, 20, red);
+          it.printf(remote_x, remote_y, id(font_mdi), red, TextAlign::CENTER_LEFT, "󰍶");
+          } 
+          else {
+            //print headphone icons for music status
+            if (id(remote_music_sensor).state) { 
+              it.printf(remote_x, remote_y, id(font_mdi), green, TextAlign::CENTER_LEFT, "󰋌");
+            }        
+              else { 
+                //if remote not busy, check for work status of remote person
+                if (id(remote_work_status).state) {
+                  //if work status yes, print working color (orange)
+                  //it.filled_circle(remote_x, remote_y, 20, orange);
+                  it.printf(remote_x, remote_y, id(font_mdi), orange, TextAlign::CENTER_LEFT, "󰪥");
+                }
+                  else { 
+                    //not busy and not working, print available color (teal)
+                    //it.filled_circle(remote_x, remote_y, 20, teal);
+                    it.printf(remote_x, remote_y, id(font_mdi), teal, TextAlign::CENTER_LEFT, "󰪥");
+                    } 
+                }
+            }
+        } 
+    }
+    // Display is inactive, show a blank screen
+    else { 
+      it.fill(black);
+    }
